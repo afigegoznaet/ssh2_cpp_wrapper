@@ -75,7 +75,7 @@ int64_t ssh2_conn::receive_file(const char *src_file, const char *dst_file) {
 	std::fstream out_file;
 	out_file.open(dst_file, std::ios_base::out | std::ios_base::binary
 								| std::ios_base::trunc);
-	if (out_file.is_open())
+	if (!out_file.is_open())
 		return -1;
 
 	int64_t rcv_size = 0;

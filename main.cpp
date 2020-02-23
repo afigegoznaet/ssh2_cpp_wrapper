@@ -24,6 +24,7 @@ int main() {
 	std::vector<char> vec(static_cast<size_t>(fts.file_size + 1));
 	std::cout << vec.size() << '\n';
 	s2con.receive_file(fts, vec.data());
+	s2con.receive_file(scppath, "test.txt");
 	std::cout << vec.data() << '\n';
 	return 0;
 }
