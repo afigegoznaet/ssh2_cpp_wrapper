@@ -3,25 +3,29 @@
 #include <cstdint>
 #include <WinSock2.h>
 
-struct LIBSSH2_CHANNEL;
-struct LIBSSH2_SESSION;
+
+struct _LIBSSH2_CHANNEL;
+struct _LIBSSH2_SESSION;
 
 struct file_transfer_session {
+
 	file_transfer_session() = default;
 	file_transfer_session(const file_transfer_session &) = delete;
 	file_transfer_session(file_transfer_session &&) = default;
-	LIBSSH2_CHANNEL *channel;
-	int64_t			 file_size;
+	_LIBSSH2_CHANNEL *channel;
+	int64_t			  file_size;
 	~file_transfer_session();
 };
 
+
 class ssh2_conn {
+
 	WSADATA			   wsadata;
 	SOCKET			   sock;
 	struct sockaddr_in socket_in;
 	// unsigned long	   hostaddr;
-	LIBSSH2_SESSION *session;
-	const char *	 fingerprint;
+	_LIBSSH2_SESSION *session;
+	const char *	  fingerprint;
 
 
 public:
@@ -40,6 +44,5 @@ public:
 	int64_t receive_file(file_transfer_session &fts, char *dest);
 	int64_t receive_file(const char *src_file, const char *dst_file);
 };
-
 
 #endif // SSH2_CPP_WRAPPER_HPP
