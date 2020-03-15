@@ -14,9 +14,8 @@
 
 int main() {
 	constexpr auto address = "192.168.0.101";
-	constexpr auto username = "user";
-	constexpr auto password = "password";
-	constexpr auto scppath = "/tmp/test";
+
+	constexpr auto scppath = "/tmp/test.txt";
 	constexpr auto scpSendPath1 = "/tmp/testSend1";
 	constexpr auto scpSendPath2 = "/tmp/testSend2";
 	ssh2_conn	   s2con(address);
@@ -49,6 +48,7 @@ int main() {
 
 	const auto stringToSend = "blahblahblah";
 	ftsSend.file_size = strlen(stringToSend);
+	ftsSend.file_mode = 0111;
 	s2con.propose_file(ftsSend, scpSendPath1);
 
 	s2con.send_buffer_to_file(stringToSend, ftsSend);

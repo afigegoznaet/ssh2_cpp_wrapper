@@ -14,6 +14,7 @@ struct file_transfer_session {
 	file_transfer_session(file_transfer_session &&) = default;
 	_LIBSSH2_CHANNEL *channel;
 	int64_t			  file_size;
+	unsigned short	  file_mode;
 	~file_transfer_session();
 };
 

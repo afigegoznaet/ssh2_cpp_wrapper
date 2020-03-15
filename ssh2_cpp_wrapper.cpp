@@ -106,16 +106,18 @@ int64_t ssh2_conn::receive_file(const char *remote_file,
 
 int ssh2_conn::propose_file(file_transfer_session &fts,
 							const char *		   remote_file_path) {
-	libssh2_struct_stat fileinfo;
+	// libssh2_struct_stat fileinfo;
 
-	if (stat(remote_file_path, reinterpret_cast<struct stat *>(&fileinfo)))
+	// if (stat(remote_file_path, reinterpret_cast<struct stat *>(&fileinfo)))
+	// return -1;
+
+	if (!fts.file_size)
 		return -1;
 
 	fts.channel =
-		libssh2_scp_send(session, remote_file_path, fileinfo.st_mode & 0777,
-						 static_cast<unsigned long>(fileinfo.st_size));
+		libssh2_scp_send(session, remote_file_path, fts.file_mode & 0777,
+						 static_cast<unsigned long>(fts.file_size));
 
-	fts.file_size = fileinfo.st_size;
 	if (!fts.channel)
 		return -1;
 
@@ -126,15 +128,30 @@ int64_t ssh2_conn::send_buffer_to_file(const char *			  source_buffer,
 									   file_transfer_session &fts) {
 	return libssh2_channel_write(fts.channel, source_buffer,
 								 static_cast<uint64_t>(fts.file_size));
+	fprintf(stderr, "Sending EOF\n");
+	libssh2_channel_send_eof(fts.channel);
+
+	fprintf(stderr, "Waiting for EOF\n");
+	libssh2_channel_wait_eof(fts.channel);
+
+	fprintf(stderr, "Waiting for channel to close\n");
+	libssh2_channel_wait_closed(fts.channel);
 }
 
 int64_t ssh2_conn::send_file(const char *local_file, const char *remote_file) {
+	libssh2_struct_stat fileinfo;
+
+	if (stat(local_file, reinterpret_cast<struct stat *>(&fileinfo)))
+		return -1;
+
 	std::fstream input_file;
 	input_file.open(local_file, std::ios_base::in | std::ios_base::binary);
 	if (!input_file.is_open())
 		return -1;
 
 	file_transfer_session fts;
+	fts.file_mode = fileinfo.st_mode;
+	fts.file_size = fileinfo.st_size;
 	propose_file(fts, remote_file);
 	if (!fts.channel)
 		return -1;
@@ -161,16 +178,14 @@ int64_t ssh2_conn::send_file(const char *local_file, const char *remote_file) {
 	}
 
 
-	fprintf(stderr, "Sending EOF\n");
+	// fprintf(stderr, "Sending EOF\n");
 	libssh2_channel_send_eof(fts.channel);
 
-	fprintf(stderr, "Waiting for EOF\n");
+	// fprintf(stderr, "Waiting for EOF\n");
 	libssh2_channel_wait_eof(fts.channel);
 
-	fprintf(stderr, "Waiting for channel to close\n");
+	// fprintf(stderr, "Waiting for channel to close\n");
 	libssh2_channel_wait_closed(fts.channel);
-
-	libssh2_channel_free(fts.channel);
 
 	return snd_size;
 }
