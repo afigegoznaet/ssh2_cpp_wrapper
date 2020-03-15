@@ -2,6 +2,7 @@
 #include <libssh2.h>
 #include "ssh2_cpp_wrapper.hpp"
 #include <fstream>
+#include <sys/types.h>
 
 file_transfer_session::~file_transfer_session() {
 	libssh2_channel_free(channel);
@@ -51,30 +52,33 @@ int ssh2_conn::disconnect() {
 	libssh2_session_free(session);
 	return res;
 }
-int ssh2_conn::lookup_file(file_transfer_session &fts, const char *filePath) {
+int ssh2_conn::lookup_file(file_transfer_session &fts,
+						   const char *			  remote_file_path) {
 	libssh2_struct_stat fileinfo;
-	fts.channel = libssh2_scp_recv2(session, filePath, &fileinfo);
+	fts.channel = libssh2_scp_recv2(session, remote_file_path, &fileinfo);
 	fts.file_size = fileinfo.st_size;
 	if (!fts.channel)
 		return -1;
 	return 0;
 }
 
-int64_t ssh2_conn::receive_file(file_transfer_session &fts, char *dest) {
-	auto res = libssh2_channel_read(fts.channel, dest,
+int64_t ssh2_conn::receive_file_to_buffer(file_transfer_session &fts,
+										  char *				 out_buffer) {
+	auto res = libssh2_channel_read(fts.channel, out_buffer,
 									static_cast<uint64_t>(fts.file_size));
 	return res;
 }
 
-int64_t ssh2_conn::receive_file(const char *src_file, const char *dst_file) {
+int64_t ssh2_conn::receive_file(const char *remote_file,
+								const char *local_file) {
 	file_transfer_session fts{};
-	lookup_file(fts, src_file);
+	lookup_file(fts, remote_file);
 	if (!fts.channel)
 		return -1;
 
 	std::fstream out_file;
-	out_file.open(dst_file, std::ios_base::out | std::ios_base::binary
-								| std::ios_base::trunc);
+	out_file.open(local_file, std::ios_base::out | std::ios_base::binary
+								  | std::ios_base::trunc);
 	if (!out_file.is_open())
 		return -1;
 
@@ -98,4 +102,75 @@ int64_t ssh2_conn::receive_file(const char *src_file, const char *dst_file) {
 		rcv_size += rc;
 	}
 	return rcv_size;
+}
+
+int ssh2_conn::propose_file(file_transfer_session &fts,
+							const char *		   remote_file_path) {
+	libssh2_struct_stat fileinfo;
+
+	if (stat(remote_file_path, reinterpret_cast<struct stat *>(&fileinfo)))
+		return -1;
+
+	fts.channel =
+		libssh2_scp_send(session, remote_file_path, fileinfo.st_mode & 0777,
+						 static_cast<unsigned long>(fileinfo.st_size));
+
+	fts.file_size = fileinfo.st_size;
+	if (!fts.channel)
+		return -1;
+
+	return 0;
+}
+
+int64_t ssh2_conn::send_buffer_to_file(const char *			  source_buffer,
+									   file_transfer_session &fts) {
+	return libssh2_channel_write(fts.channel, source_buffer,
+								 static_cast<uint64_t>(fts.file_size));
+}
+
+int64_t ssh2_conn::send_file(const char *local_file, const char *remote_file) {
+	std::fstream input_file;
+	input_file.open(local_file, std::ios_base::in | std::ios_base::binary);
+	if (!input_file.is_open())
+		return -1;
+
+	file_transfer_session fts;
+	propose_file(fts, remote_file);
+	if (!fts.channel)
+		return -1;
+
+
+	int64_t snd_size = 0;
+	while (snd_size < fts.file_size) {
+		constexpr auto buf_size = 1024;
+		char		   mem[buf_size];
+		int64_t		   amount = buf_size;
+
+		if ((fts.file_size - snd_size) < amount) {
+			amount = (fts.file_size - snd_size);
+		}
+		input_file.read(mem, amount);
+
+		if (input_file) { // returns false on error
+			auto rc = libssh2_channel_write(fts.channel, mem,
+											static_cast<uint64_t>(amount));
+			snd_size += rc;
+		} else {
+			break;
+		}
+	}
+
+
+	fprintf(stderr, "Sending EOF\n");
+	libssh2_channel_send_eof(fts.channel);
+
+	fprintf(stderr, "Waiting for EOF\n");
+	libssh2_channel_wait_eof(fts.channel);
+
+	fprintf(stderr, "Waiting for channel to close\n");
+	libssh2_channel_wait_closed(fts.channel);
+
+	libssh2_channel_free(fts.channel);
+
+	return snd_size;
 }

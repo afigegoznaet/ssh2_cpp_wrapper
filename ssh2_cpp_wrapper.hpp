@@ -40,9 +40,15 @@ public:
 	int disconnect();
 	// file_transfer_session struct should be passed by referenece, since
 	// copying the LIBSSH2_CHANNEL ptr spoils the data
-	int		lookup_file(file_transfer_session &fts, const char *filePath);
-	int64_t receive_file(file_transfer_session &fts, char *dest);
-	int64_t receive_file(const char *src_file, const char *dst_file);
+	int lookup_file(file_transfer_session &fts, const char *remote_file_path);
+	int64_t receive_file_to_buffer(file_transfer_session &fts,
+								   char *				  out_buffer);
+	int64_t receive_file(const char *remote_file, const char *local_file);
+
+	int propose_file(file_transfer_session &fts, const char *remote_file_path);
+	int64_t send_buffer_to_file(const char *		   local_file,
+								file_transfer_session &fts);
+	int64_t send_file(const char *local_file, const char *remote_file);
 };
 
 #endif // SSH2_CPP_WRAPPER_HPP
