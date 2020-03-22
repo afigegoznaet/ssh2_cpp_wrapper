@@ -14,7 +14,8 @@
 
 int main() {
 	constexpr auto address = "192.168.0.101";
-
+	constexpr auto username =
+	constexpr auto password =
 	constexpr auto scppath = "/tmp/test.txt";
 	constexpr auto scpSendPath1 = "/tmp/testSend1";
 	constexpr auto scpSendPath2 = "/tmp/testSend2";
@@ -63,6 +64,9 @@ int main() {
 	/***
 	 * End of example 3
 	 * */
+	char buff[0x400] = {0};
+	s2con.exec_cmd("ls", buff, 0x400);
+	std::cout << buff << '\n';
 
 	return 0;
 }

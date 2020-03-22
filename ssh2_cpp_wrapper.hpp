@@ -50,6 +50,8 @@ public:
 	int64_t send_buffer_to_file(const char *		   local_file,
 								file_transfer_session &fts);
 	int64_t send_file(const char *local_file, const char *remote_file);
+
+	int exec_cmd(const char *cmd, char *res_buffer, size_t res_buffer_size);
 };
 
 #endif // SSH2_CPP_WRAPPER_HPP

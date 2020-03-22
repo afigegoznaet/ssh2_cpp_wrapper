@@ -189,3 +189,29 @@ int64_t ssh2_conn::send_file(const char *local_file, const char *remote_file) {
 
 	return snd_size;
 }
+
+int ssh2_conn::exec_cmd(const char *cmd, char *res_buffer,
+						size_t res_buffer_size) {
+
+	auto channel = libssh2_channel_open_session(session);
+	if (channel == nullptr)
+		return -1;
+
+	auto rc = libssh2_channel_exec(channel, cmd);
+	// fprintf(stderr, "channel exec %d\n", res);
+	int bytecount = 0;
+
+	if (0 == rc) {
+		rc = 1;
+		while (rc > 0) {
+			// char buffer[0x4000];
+			rc = libssh2_channel_read(channel, res_buffer, res_buffer_size);
+		}
+	}
+
+
+	libssh2_channel_close(channel);
+	libssh2_channel_get_exit_status(channel);
+	libssh2_channel_free(channel);
+	return rc;
+}
